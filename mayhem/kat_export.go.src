@@ -1,0 +1,46 @@
+// mayhem/kat_export.go.src — a known-answer set of parses through the
+// openkruise resource-expression calculator, exported so the dynamically-linked
+// KAT probe (mayhem/kat) can assert exact result values. Staged by
+// mayhem/build.sh into _mayhem_harness/calc alongside the copied
+// `package calculator` sources, so it reaches the real Parse()/GetResult()
+// code path — the same path the fuzz harness exercises.
+//
+// This is the BEHAVIORAL oracle's engine. Every expression + expected value
+// below is lifted from upstream's own pkg/util/calculator/calculator_test.go
+// golden cases (integer arithmetic, max/min, quantity subtraction), so the
+// oracle asserts the authors' documented behavior. When the program is neutered
+// (LD_PRELOAD _exit(0)), the probe prints nothing and the assertions fail —
+// which is the point (§6.3).
+package calculator
+
+import "fmt"
+
+// KATResult holds one parsed known-answer expression and its string result.
+type KATResult struct {
+	Expr string
+	Out  string
+}
+
+// KATParses evaluates a fixed list of expressions through the real parser and
+// returns each expression's GetResult().String() (empty string on error).
+func KATParses() ([]KATResult, error) {
+	cases := []string{
+		"20 - 10",       // -> "10"   (integer subtraction)
+		"10 - 10",       // -> "0"
+		"3 * 4",         // -> "12"   (integer multiplication)
+		"max(10, 20)",   // -> "20"   (function, number args)
+		"min(40m, 20m)", // -> "20m"  (function, quantity args, canonical String())
+	}
+	out := make([]KATResult, 0, len(cases))
+	for _, expr := range cases {
+		calc, err := Parse(expr)
+		if err != nil {
+			return nil, fmt.Errorf("parse %q: %w", expr, err)
+		}
+		if calc == nil || calc.GetResult() == nil {
+			return nil, fmt.Errorf("parse %q: nil result", expr)
+		}
+		out = append(out, KATResult{Expr: expr, Out: calc.GetResult().String()})
+	}
+	return out, nil
+}
