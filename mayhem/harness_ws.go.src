@@ -1,0 +1,41 @@
+// Staged by mayhem/build.sh next to a copy of pkg/util/workloadspread/utils.go (package
+// workloadspread). Same body as upstream's FuzzNestedField in
+// fuzz_workloadspread_utils_test.go; staged because the package's test files do not load
+// under go-118-fuzz-build.
+package workloadspread
+
+import (
+	"testing"
+
+	fuzz "github.com/AdaLogics/go-fuzz-headers"
+)
+
+func FuzzNestedField(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		cf := fuzz.NewConsumer(data)
+
+		paths := make([]string, 0)
+		if err := cf.CreateSlice(&paths); err != nil {
+			return
+		}
+
+		useMap, err := cf.GetBool()
+		if err != nil {
+			return
+		}
+
+		if useMap {
+			m := make(map[string]any)
+			if err := cf.FuzzMap(&m); err != nil {
+				return
+			}
+			_, _, _ = NestedField[any](m, paths...)
+		} else {
+			s := make([]any, 0)
+			if err := cf.CreateSlice(&s); err != nil {
+				return
+			}
+			_, _, _ = NestedField[any](s, paths...)
+		}
+	})
+}

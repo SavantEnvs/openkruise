@@ -1,0 +1,7 @@
+project: savantenvs/openkruise
+target: fuzz_nested_field-mined-c5bc8a0
+testsuite:
+  - https://$MAYHEM_DOMAIN/$MAYHEM_PROJECT/$MAYHEM_TARGET/testsuite.tar
+cmds:
+  - cmd: /mayhem/fuzz_nested_field
+    libfuzzer: true
