@@ -1,0 +1,44 @@
+// Staged by mayhem/build.sh beside utils.go: known-answer lookups through the real
+// NestedField, for mayhem/kat and mayhem/test.sh.
+package workloadspread
+
+import "fmt"
+
+type KATResult struct {
+	Name string
+	Out  string
+}
+
+func KATNested() ([]KATResult, error) {
+	obj := map[string]any{
+		"spec": map[string]any{
+			"subsets": []any{
+				map[string]any{"name": "zone-a", "replicas": "3"},
+				map[string]any{"name": "zone-b", "replicas": "7"},
+			},
+		},
+	}
+	out := []KATResult{}
+	for _, path := range [][]string{
+		{"spec", "subsets", "1", "name"},
+		{"spec", "subsets", "0", "replicas"},
+	} {
+		v, ok, err := NestedField[string](obj, path...)
+		if err != nil || !ok {
+			return nil, fmt.Errorf("lookup %v: ok=%v err=%v", path, ok, err)
+		}
+		out = append(out, KATResult{Name: fmt.Sprint(path), Out: v})
+	}
+	for _, path := range [][]string{
+		{"spec", "subsets", "2", "name"},
+		{"spec", "subsets", "-1", "name"},
+		{"spec", "missing"},
+	} {
+		_, ok, err := NestedField[string](obj, path...)
+		if err == nil || ok {
+			return nil, fmt.Errorf("lookup %v: expected an error", path)
+		}
+		out = append(out, KATResult{Name: fmt.Sprint(path), Out: "error"})
+	}
+	return out, nil
+}
